@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "build": "vite build",
+    "build:sites": "vite build --outDir dist/client --emptyOutDir true && node scripts/build-sites.mjs",
+    "dev": "vite --host 0.0.0.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest"
+  },
+  "devDependencies": {}
+}
