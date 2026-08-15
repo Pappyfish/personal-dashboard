@@ -200,15 +200,17 @@ function App() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      if (!response.ok) throw new Error("bad password");
       const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body?.error || "bad password");
+      }
       localStorage.setItem(TOKEN_KEY, body.token);
       setToken(body.token);
       setPassword("");
       setShowLogin(false);
       setSyncState("编辑已解锁");
-    } catch {
-      setAuthError("密码不正确");
+    } catch (error) {
+      setAuthError(error.message === "EDIT_PASSWORD is not configured" ? "编辑密码没有配置到运行时" : "密码不正确");
     } finally {
       setLoginBusy(false);
     }
