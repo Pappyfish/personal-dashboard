@@ -157,11 +157,9 @@ function App() {
         return;
       }
 
-      if (window.location.hash === "#edit") {
-        localStorage.setItem(EDIT_KEY, "true");
-        setSharedMode(false);
-        setIsEditor(true);
-        history.replaceState(null, "", window.location.pathname + window.location.search);
+      const params = new URLSearchParams(window.location.search);
+      if (window.location.hash === "#edit" || params.get("edit") === "1") {
+        enableEditor();
       }
     }
 
@@ -172,6 +170,14 @@ function App() {
 
   const canEdit = isEditor && !sharedMode;
   const timeZone = data.settings.timezone;
+
+  function enableEditor() {
+    localStorage.setItem(EDIT_KEY, "true");
+    setSharedMode(false);
+    setIsEditor(true);
+    const cleanUrl = `${window.location.pathname}${window.location.hash === "#edit" ? "" : window.location.hash}`;
+    history.replaceState(null, "", cleanUrl);
+  }
 
   function persist(next) {
     const normalized = normalizeData(next);
@@ -343,6 +349,11 @@ function App() {
       <section className={`mode-band ${canEdit ? "edit" : ""}`}>
         {canEdit ? <CheckCircle2 size={18} /> : sharedMode ? <Eye size={18} /> : <Lock size={18} />}
         <span>{canEdit ? "编辑模式" : sharedMode ? "只读分享视图" : "公开只读视图"}</span>
+        {!canEdit && !sharedMode ? (
+          <button className="mini-button" onClick={enableEditor}>
+            启用编辑
+          </button>
+        ) : null}
         {shareState ? <strong>{shareState}</strong> : null}
       </section>
 

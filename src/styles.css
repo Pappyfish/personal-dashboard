@@ -112,6 +112,21 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.mini-button {
+  min-height: 34px;
+  margin-left: auto;
+  padding: 0 12px;
+  border: 1px solid #c7d1c4;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #28362e;
+  font-weight: 700;
+}
+
+.mini-button:hover {
+  background: #e7ede5;
+}
+
 .settings-panel h2,
 .settings-panel p {
   margin: 0;
