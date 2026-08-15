@@ -159,6 +159,44 @@ h1 {
   background: #fffdf8;
 }
 
+.login-panel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid #d9d7cc;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.login-panel form {
+  display: grid;
+  grid-template-columns: 24px minmax(180px, 1fr) auto 42px;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-panel input {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d8d5ca;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #252720;
+  outline: none;
+}
+
+.login-panel p {
+  margin: 0 0 0 32px;
+  color: #8f3c35;
+  font-size: 0.88rem;
+}
+
+.loading-panel {
+  margin-bottom: 14px;
+  color: #60665d;
+}
+
 .search input,
 .compact-form input,
 .compact-form select,
@@ -580,6 +618,14 @@ textarea {
     align-items: stretch;
     flex-direction: column;
   }
+
+  .login-panel form {
+    grid-template-columns: 24px minmax(0, 1fr) 42px;
+  }
+
+  .login-panel .text-button {
+    grid-column: 2 / -1;
+  }
 }
 
 @media (max-width: 560px) {
@@ -598,7 +644,20 @@ textarea {
 
   .top-actions {
     display: grid;
-    grid-template-columns: 1fr 42px 42px;
+    grid-template-columns: 1fr 42px 42px 42px;
+  }
+
+  .login-panel form {
+    grid-template-columns: 1fr 42px;
+  }
+
+  .login-panel svg {
+    display: none;
+  }
+
+  .login-panel input,
+  .login-panel .text-button {
+    grid-column: 1 / -1;
   }
 
   .assignment-row {

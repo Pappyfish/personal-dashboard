@@ -11,6 +11,8 @@ import {
   Eye,
   FileText,
   Lock,
+  LogIn,
+  LogOut,
   NotebookPen,
   Plus,
   Search,
@@ -21,8 +23,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 
-const STORAGE_KEY = "personal-dashboard-v2";
-const EDIT_KEY = "personal-dashboard-editor";
+const TOKEN_KEY = "personal-dashboard-editor-token";
 
 const initialData = {
   settings: { timezone: "Asia/Shanghai" },
@@ -50,25 +51,9 @@ function normalizeData(value) {
       completedCycles: {},
       ...item,
     })),
+    memos: value?.memos || [],
+    notes: value?.notes || [],
   };
-}
-
-function loadData() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const legacy = localStorage.getItem("personal-dashboard-v1");
-    return normalizeData(saved ? JSON.parse(saved) : legacy ? JSON.parse(legacy) : initialData);
-  } catch {
-    return initialData;
-  }
-}
-
-function encodeShare(data) {
-  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-}
-
-function decodeShare(value) {
-  return normalizeData(JSON.parse(decodeURIComponent(escape(atob(value)))));
 }
 
 function getDateParts(date, timeZone) {
@@ -127,10 +112,16 @@ function isAssignmentComplete(item, timeZone) {
 }
 
 function App() {
-  const [sharedMode, setSharedMode] = useState(false);
-  const [data, setData] = useState(loadData);
-  const [isEditor, setIsEditor] = useState(() => localStorage.getItem(EDIT_KEY) === "true");
+  const [data, setData] = useState(initialData);
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [syncState, setSyncState] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
   const [shareState, setShareState] = useState("");
   const [assignmentDraft, setAssignmentDraft] = useState({
     title: "",
@@ -144,51 +135,95 @@ function App() {
   const [noteDraft, setNoteDraft] = useState("");
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
-    function applyHashMode() {
-      if (window.location.hash.startsWith("#share=")) {
-        try {
-          setData(decodeShare(window.location.hash.slice(7)));
-          setSharedMode(true);
-          setIsEditor(false);
-        } catch {
-          setSharedMode(true);
-        }
-        return;
-      }
-
-      const params = new URLSearchParams(window.location.search);
-      if (window.location.hash === "#edit" || params.get("edit") === "1") {
-        enableEditor();
-      }
-    }
-
-    applyHashMode();
-    window.addEventListener("hashchange", applyHashMode);
-    return () => window.removeEventListener("hashchange", applyHashMode);
-  }, []);
-
-  const canEdit = isEditor && !sharedMode;
+  const canEdit = Boolean(token);
   const timeZone = data.settings.timezone;
 
-  function enableEditor() {
-    localStorage.setItem(EDIT_KEY, "true");
-    setSharedMode(false);
-    setIsEditor(true);
-    const cleanUrl = `${window.location.pathname}${window.location.hash === "#edit" ? "" : window.location.hash}`;
-    history.replaceState(null, "", cleanUrl);
+  useEffect(() => {
+    loadState();
+    const interval = window.setInterval(() => {
+      if (!document.hidden) loadState({ quiet: true });
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  async function loadState(options = {}) {
+    try {
+      if (!options.quiet) setLoading(true);
+      const response = await fetch("/api/state", { cache: "no-store" });
+      if (!response.ok) throw new Error("load failed");
+      const next = normalizeData(await response.json());
+      setData(next);
+      if (!options.quiet) setSyncState("已连接 Cloudflare");
+    } catch {
+      if (!options.quiet) setSyncState("暂时无法读取云端数据");
+    } finally {
+      if (!options.quiet) setLoading(false);
+    }
   }
 
-  function persist(next) {
+  async function saveState(next) {
+    if (!canEdit) return;
     const normalized = normalizeData(next);
     setData(normalized);
-    if (!sharedMode) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    setSaving(true);
+    setSyncState("保存中");
+    try {
+      const response = await fetch("/api/state", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(normalized),
+      });
+      if (response.status === 401) {
+        logout();
+        setShowLogin(true);
+        throw new Error("unauthorized");
+      }
+      if (!response.ok) throw new Error("save failed");
+      setSyncState("已保存到 Cloudflare");
+    } catch {
+      setSyncState("保存失败，请稍后重试");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function login(event) {
+    event.preventDefault();
+    setLoginBusy(true);
+    setAuthError("");
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!response.ok) throw new Error("bad password");
+      const body = await response.json();
+      localStorage.setItem(TOKEN_KEY, body.token);
+      setToken(body.token);
+      setPassword("");
+      setShowLogin(false);
+      setSyncState("编辑已解锁");
+    } catch {
+      setAuthError("密码不正确");
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    setToken("");
+    setSyncState("已退出编辑");
   }
 
   function addAssignment(event) {
     event.preventDefault();
     if (!canEdit || !assignmentDraft.title.trim()) return;
-    persist({
+    saveState({
       ...data,
       assignments: [
         {
@@ -213,7 +248,7 @@ function App() {
   function addMemo(event) {
     event.preventDefault();
     if (!canEdit || (!memoDraft.title.trim() && !memoDraft.body.trim())) return;
-    persist({
+    saveState({
       ...data,
       memos: [
         {
@@ -233,7 +268,7 @@ function App() {
   function addNote(event) {
     event.preventDefault();
     if (!canEdit || !noteDraft.trim()) return;
-    persist({
+    saveState({
       ...data,
       notes: [
         {
@@ -250,12 +285,12 @@ function App() {
 
   function updateCollection(collection, mapper) {
     if (!canEdit) return;
-    persist({ ...data, [collection]: data[collection].map(mapper) });
+    saveState({ ...data, [collection]: data[collection].map(mapper) });
   }
 
   function removeItem(collection, id) {
     if (!canEdit) return;
-    persist({ ...data, [collection]: data[collection].filter((item) => item.id !== id) });
+    saveState({ ...data, [collection]: data[collection].filter((item) => item.id !== id) });
   }
 
   function toggleAssignment(item) {
@@ -277,16 +312,15 @@ function App() {
 
   function updateSettings(nextSettings) {
     if (!canEdit) return;
-    persist({ ...data, settings: { ...data.settings, ...nextSettings } });
+    saveState({ ...data, settings: { ...data.settings, ...nextSettings } });
   }
 
-  async function copyShareLink() {
-    const url = `${window.location.origin}${window.location.pathname}#share=${encodeShare(data)}`;
+  async function copyLink() {
     try {
-      await navigator.clipboard.writeText(url);
-      setShareState("已复制只读链接");
+      await navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}`);
+      setShareState("已复制链接");
     } catch {
-      setShareState(url);
+      setShareState(`${window.location.origin}${window.location.pathname}`);
     }
   }
 
@@ -338,24 +372,48 @@ function App() {
           <button className="icon-button soft" onClick={() => setShowSettings(!showSettings)} title="设置">
             <Settings size={18} />
           </button>
+          <button className="icon-button soft" onClick={copyLink} title="复制链接">
+            <Copy size={18} />
+          </button>
           {canEdit ? (
-            <button className="icon-button soft" onClick={copyShareLink} title="复制只读链接">
-              <Copy size={18} />
+            <button className="icon-button soft" onClick={logout} title="退出编辑">
+              <LogOut size={18} />
             </button>
-          ) : null}
+          ) : (
+            <button className="icon-button soft" onClick={() => setShowLogin(true)} title="编辑">
+              <LogIn size={18} />
+            </button>
+          )}
         </div>
       </section>
 
       <section className={`mode-band ${canEdit ? "edit" : ""}`}>
-        {canEdit ? <CheckCircle2 size={18} /> : sharedMode ? <Eye size={18} /> : <Lock size={18} />}
-        <span>{canEdit ? "编辑模式" : sharedMode ? "只读分享视图" : "公开只读视图"}</span>
-        {!canEdit && !sharedMode ? (
-          <button className="mini-button" onClick={enableEditor}>
-            启用编辑
-          </button>
-        ) : null}
-        {shareState ? <strong>{shareState}</strong> : null}
+        {canEdit ? <CheckCircle2 size={18} /> : <Eye size={18} />}
+        <span>{canEdit ? "编辑模式" : "公开查看模式"}</span>
+        <strong>{saving ? "保存中" : shareState || syncState}</strong>
       </section>
+
+      {showLogin ? (
+        <section className="login-panel">
+          <form onSubmit={login}>
+            <Lock size={18} />
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="输入编辑密码"
+              autoFocus
+            />
+            <button className="text-button" type="submit" disabled={loginBusy}>
+              {loginBusy ? "验证中" : "进入编辑"}
+            </button>
+            <button className="icon-button ghost" type="button" onClick={() => setShowLogin(false)} title="关闭">
+              <X size={16} />
+            </button>
+          </form>
+          {authError ? <p>{authError}</p> : null}
+        </section>
+      ) : null}
 
       {showSettings ? (
         <section className="settings-panel">
@@ -393,6 +451,10 @@ function App() {
           <span style={{ width: `${stats.rate}%` }} />
         </div>
       </section>
+
+      {loading ? (
+        <section className="panel loading-panel">正在读取 Cloudflare 数据</section>
+      ) : null}
 
       <section className="dashboard-grid">
         <section className="panel assignments">
