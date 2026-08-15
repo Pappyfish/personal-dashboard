@@ -10,6 +10,7 @@
 - Build command: `pnpm run build`
 - Build output directory: `dist`
 - Root directory: `/`
+- Environment variable: `NODE_VERSION=22`
 
 ## Local Development
 
