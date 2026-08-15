@@ -1,8 +1,9 @@
 {
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node scripts/build-sites.mjs",
     "dev": "vite --host 0.0.0.0"
   },
+  "type": "module",
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "vite": "latest",
