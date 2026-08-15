@@ -1,0 +1,7 @@
+name = "personal-dashboard"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-08-15"
+
+[[r2_buckets]]
+binding = "DASHBOARD_BUCKET"
+bucket_name = "personal-dashboard"
