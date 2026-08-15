@@ -1,6 +1,11 @@
 name = "personal-dashboard"
-pages_build_output_dir = "./dist"
+main = "src/worker.js"
 compatibility_date = "2026-08-15"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
 
 [[r2_buckets]]
 binding = "DASHBOARD_BUCKET"
