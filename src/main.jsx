@@ -142,7 +142,7 @@ function App() {
     loadState();
     const interval = window.setInterval(() => {
       if (!document.hidden) loadState({ quiet: true });
-    }, 5000);
+    }, 20000);
     return () => window.clearInterval(interval);
   }, []);
 
