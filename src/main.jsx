@@ -134,8 +134,7 @@ function addDays(date, days) {
 }
 
 function getAssignmentTone(item) {
-  if (item.priority === "紧急") return "danger";
-  if (item.priority === "重要") return "important";
+  if (item.priority === "重要" || item.priority === "紧急") return "important";
   return "normal";
 }
 
@@ -424,315 +423,307 @@ function App() {
   return (
     <div className="page-frame">
       <aside className="side-rail calendar-rail">
-        <CalendarPanel
-          assignments={data.assignments}
-          cursor={calendarCursor}
-          setCursor={setCalendarCursor}
-          timeZone={timeZone}
-        />
+        <CalendarPanel assignments={data.assignments} cursor={calendarCursor} setCursor={setCalendarCursor} />
       </aside>
 
       <main className="app-shell">
-      <section className="topbar">
-        <div>
-          <p className="eyebrow">Personal Dashboard</p>
-          <h1>学习与日常记录</h1>
-        </div>
-        <div className="top-actions">
-          <label className="search">
-            <Search size={18} aria-hidden="true" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索作业、备忘或便签"
-            />
-          </label>
-          <button className="icon-button soft" onClick={() => setShowSettings(!showSettings)} title="设置">
-            <Settings size={18} />
-          </button>
-          <button className="icon-button soft" onClick={copyLink} title="复制链接">
-            <Copy size={18} />
-          </button>
-          {canEdit ? (
-            <button className="icon-button soft" onClick={logout} title="退出编辑">
-              <LogOut size={18} />
-            </button>
-          ) : (
-            <button className="icon-button soft" onClick={() => setShowLogin(true)} title="编辑">
-              <LogIn size={18} />
-            </button>
-          )}
-        </div>
-      </section>
-
-      <section className={`mode-band ${canEdit ? "edit" : ""}`}>
-        {canEdit ? <CheckCircle2 size={18} /> : <Eye size={18} />}
-        <span>{canEdit ? "编辑模式" : "公开查看模式"}</span>
-        <strong>{saving ? "保存中" : shareState || syncState}</strong>
-      </section>
-
-      {showLogin ? (
-        <section className="login-panel">
-          <form onSubmit={login}>
-            <Lock size={18} />
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="输入编辑密码"
-              autoFocus
-            />
-            <button className="text-button" type="submit" disabled={loginBusy}>
-              {loginBusy ? "验证中" : "进入编辑"}
-            </button>
-            <button className="icon-button ghost" type="button" onClick={() => setShowLogin(false)} title="关闭">
-              <X size={16} />
-            </button>
-          </form>
-          {authError ? <p>{authError}</p> : null}
-        </section>
-      ) : null}
-
-      {showSettings ? (
-        <section className="settings-panel">
+        <section className="topbar">
           <div>
-            <h2>设置</h2>
-            <p>循环作业会在所选时区的 0 点进入新周期。</p>
+            <p className="eyebrow">Personal Dashboard</p>
+            <h1>学习与日常记录</h1>
           </div>
-          <label>
-            时区
-            <select
-              value={timeZone}
-              disabled={!canEdit}
-              onChange={(event) => updateSettings({ timezone: event.target.value })}
-            >
-              <option value="Asia/Shanghai">北京时间</option>
-              <option value="America/New_York">纽约时间</option>
-            </select>
-          </label>
+          <div className="top-actions">
+            <label className="search">
+              <Search size={18} aria-hidden="true" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜索作业、备忘或便签"
+              />
+            </label>
+            <button className="icon-button soft" onClick={() => setShowSettings(!showSettings)} title="设置">
+              <Settings size={18} />
+            </button>
+            <button className="icon-button soft" onClick={copyLink} title="复制链接">
+              <Copy size={18} />
+            </button>
+            {canEdit ? (
+              <button className="icon-button soft" onClick={logout} title="退出编辑">
+                <LogOut size={18} />
+              </button>
+            ) : (
+              <button className="icon-button soft" onClick={() => setShowLogin(true)} title="编辑">
+                <LogIn size={18} />
+              </button>
+            )}
+          </div>
         </section>
-      ) : null}
 
-      <section className="stats-grid" aria-label="作业概览">
-        <Stat icon={ClipboardList} label="总作业" value={stats.total} />
-        <Stat icon={CheckCircle2} label="当前完成" value={stats.done} />
-        <Stat icon={Clock3} label="当前待做" value={stats.pending} />
-        <Stat icon={Bell} label="近两天截止" value={stats.urgent} tone="warm" />
-      </section>
+        <section className={`mode-band ${canEdit ? "edit" : ""}`}>
+          {canEdit ? <CheckCircle2 size={18} /> : <Eye size={18} />}
+          <span>{canEdit ? "编辑模式" : "公开查看模式"}</span>
+          <strong>{saving ? "保存中" : shareState || syncState}</strong>
+        </section>
 
-      <section className="progress-band">
-        <div>
-          <span>当前完成率</span>
-          <strong>{stats.rate}%</strong>
-        </div>
-        <div className="progress-track" aria-hidden="true">
-          <span style={{ width: `${stats.rate}%` }} />
-        </div>
-      </section>
-
-      {loading ? (
-        <section className="panel loading-panel">正在读取 Cloudflare 数据</section>
-      ) : null}
-
-      <section className="dashboard-grid">
-        <section className="panel assignments">
-          <PanelTitle icon={NotebookPen} title="作业" />
-          {canEdit ? (
-            <form className="compact-form assignment-form" onSubmit={addAssignment}>
+        {showLogin ? (
+          <section className="login-panel">
+            <form onSubmit={login}>
+              <Lock size={18} />
               <input
-                value={assignmentDraft.title}
-                onChange={(event) => setAssignmentDraft({ ...assignmentDraft, title: event.target.value })}
-                placeholder="作业名称"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="输入编辑密码"
+                autoFocus
               />
-              <input
-                value={assignmentDraft.course}
-                onChange={(event) => setAssignmentDraft({ ...assignmentDraft, course: event.target.value })}
-                placeholder="科目"
-              />
-              <input
-                type="date"
-                value={assignmentDraft.due}
-                onChange={(event) => setAssignmentDraft({ ...assignmentDraft, due: event.target.value })}
-              />
-              <select
-                value={assignmentDraft.priority}
-                onChange={(event) => setAssignmentDraft({ ...assignmentDraft, priority: event.target.value })}
-              >
-                <option>普通</option>
-                <option>重要</option>
-                <option>紧急</option>
-              </select>
-              <select
-                value={assignmentDraft.type}
-                onChange={(event) => setAssignmentDraft({ ...assignmentDraft, type: event.target.value })}
-              >
-                <option value="once">一次</option>
-                <option value="long">长期</option>
-                <option value="daily">每天</option>
-                <option value="interval">每x天</option>
-              </select>
-              {assignmentDraft.type === "interval" ? (
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={assignmentDraft.intervalDays}
-                  onChange={(event) => setAssignmentDraft({ ...assignmentDraft, intervalDays: event.target.value })}
-                  aria-label="间隔天数"
-                />
-              ) : null}
-              <button className="icon-button primary" type="submit" aria-label="新增作业" title="新增作业">
-                <Plus size={18} />
+              <button className="text-button" type="submit" disabled={loginBusy}>
+                {loginBusy ? "验证中" : "进入编辑"}
+              </button>
+              <button className="icon-button ghost" type="button" onClick={() => setShowLogin(false)} title="关闭">
+                <X size={16} />
               </button>
             </form>
-          ) : null}
-          <div className="list">
-            {filtered.assignments.length === 0 ? (
-              <Empty text="暂无作业" />
-            ) : (
-              filtered.assignments.map((item) => {
-                const complete = isAssignmentComplete(item, timeZone);
-                const todayChecked = Boolean(item.completedCycles?.[getCycleKey(item, timeZone)]);
-                return (
-                  <article
-                    className={`assignment-row ${complete && item.type === "once" ? "is-done" : ""}`}
-                    key={item.id}
-                  >
-                    {(item.comments || []).length ? (
-                      <span className="comment-badge">{Math.min(99, (item.comments || []).length)}</span>
-                    ) : null}
+            {authError ? <p>{authError}</p> : null}
+          </section>
+        ) : null}
+
+        {showSettings ? (
+          <section className="settings-panel">
+            <div>
+              <h2>设置</h2>
+              <p>循环作业会在所选时区的 0 点进入新周期。</p>
+            </div>
+            <label>
+              时区
+              <select
+                value={timeZone}
+                disabled={!canEdit}
+                onChange={(event) => updateSettings({ timezone: event.target.value })}
+              >
+                <option value="Asia/Shanghai">北京时间</option>
+                <option value="America/New_York">纽约时间</option>
+              </select>
+            </label>
+          </section>
+        ) : null}
+
+        <section className="stats-grid" aria-label="作业概览">
+          <Stat icon={ClipboardList} label="总作业" value={stats.total} />
+          <Stat icon={CheckCircle2} label="当前完成" value={stats.done} />
+          <Stat icon={Clock3} label="当前待做" value={stats.pending} />
+          <Stat icon={Bell} label="近两天截止" value={stats.urgent} tone="warm" />
+        </section>
+
+        <section className="progress-band">
+          <div>
+            <span>当前完成率</span>
+            <strong>{stats.rate}%</strong>
+          </div>
+          <div className="progress-track" aria-hidden="true">
+            <span style={{ width: `${stats.rate}%` }} />
+          </div>
+        </section>
+
+        {loading ? <section className="panel loading-panel">正在读取 Cloudflare 数据</section> : null}
+
+        <section className="dashboard-grid">
+          <section className="panel assignments">
+            <PanelTitle icon={NotebookPen} title="作业" />
+            {canEdit ? (
+              <form className="compact-form assignment-form" onSubmit={addAssignment}>
+                <input
+                  value={assignmentDraft.title}
+                  onChange={(event) => setAssignmentDraft({ ...assignmentDraft, title: event.target.value })}
+                  placeholder="作业名称"
+                />
+                <input
+                  value={assignmentDraft.course}
+                  onChange={(event) => setAssignmentDraft({ ...assignmentDraft, course: event.target.value })}
+                  placeholder="科目"
+                />
+                <input
+                  type="date"
+                  value={assignmentDraft.due}
+                  onChange={(event) => setAssignmentDraft({ ...assignmentDraft, due: event.target.value })}
+                />
+                <select
+                  value={assignmentDraft.priority}
+                  onChange={(event) => setAssignmentDraft({ ...assignmentDraft, priority: event.target.value })}
+                >
+                  <option>普通</option>
+                  <option>重要</option>
+                  <option>紧急</option>
+                </select>
+                <select
+                  value={assignmentDraft.type}
+                  onChange={(event) => setAssignmentDraft({ ...assignmentDraft, type: event.target.value })}
+                >
+                  <option value="once">一次</option>
+                  <option value="long">长期</option>
+                  <option value="daily">每天</option>
+                  <option value="interval">每x天</option>
+                </select>
+                {assignmentDraft.type === "interval" ? (
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={assignmentDraft.intervalDays}
+                    onChange={(event) => setAssignmentDraft({ ...assignmentDraft, intervalDays: event.target.value })}
+                    aria-label="间隔天数"
+                  />
+                ) : null}
+                <button className="icon-button primary" type="submit" aria-label="新增作业" title="新增作业">
+                  <Plus size={18} />
+                </button>
+              </form>
+            ) : null}
+            <div className="list">
+              {filtered.assignments.length === 0 ? (
+                <Empty text="暂无作业" />
+              ) : (
+                filtered.assignments.map((item) => {
+                  const complete = isAssignmentComplete(item, timeZone);
+                  const todayChecked = Boolean(item.completedCycles?.[getCycleKey(item, timeZone)]);
+                  return (
+                    <article
+                      className={`assignment-row ${complete && item.type === "once" ? "is-done" : ""}`}
+                      key={item.id}
+                    >
+                      {(item.comments || []).length ? (
+                        <span className="comment-badge">{Math.min(99, (item.comments || []).length)}</span>
+                      ) : null}
+                      <button
+                        className="check-button"
+                        onClick={() => toggleAssignment(item)}
+                        disabled={!canEdit}
+                        aria-label={complete || todayChecked ? "取消完成" : "标记完成"}
+                        title={complete || todayChecked ? "取消完成" : "标记完成"}
+                      >
+                        {complete || todayChecked ? <Check size={16} /> : null}
+                      </button>
+                      <div>
+                        <h2>{item.title}</h2>
+                        <p>
+                          {item.course || "未分类"} · {formatDate(item.due)}
+                        </p>
+                        <p>
+                          {assignmentTypes[item.type]}
+                          {item.type === "interval" ? ` · 每 ${item.intervalDays || 1} 天` : ""}
+                          {item.type === "long" ? ` · ${item.progress || 1}%` : ""}
+                        </p>
+                      </div>
+                      {item.type === "long" ? (
+                        <input
+                          className="progress-input"
+                          type="number"
+                          min="1"
+                          max="100"
+                          disabled={!canEdit}
+                          value={item.progress || 1}
+                          onChange={(event) => updateProgress(item, event.target.value)}
+                          aria-label="长期任务完成百分比"
+                        />
+                      ) : (
+                        <span className={`pill ${item.priority}`}>{item.priority}</span>
+                      )}
+                      {canEdit ? (
+                        <div className="row-actions">
+                          <button
+                            className="icon-button ghost"
+                            onClick={() => {
+                              setCommentAssignmentId(item.id);
+                              setCommentDraft("");
+                            }}
+                            aria-label="批注"
+                            title="批注"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            className="icon-button ghost"
+                            onClick={() => removeItem("assignments", item.id)}
+                            aria-label="删除作业"
+                            title="删除作业"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          <section className="panel">
+            <PanelTitle icon={CalendarDays} title="备忘录" />
+            {canEdit ? (
+              <form className="memo-form" onSubmit={addMemo}>
+                <div className="inline-fields">
+                  <input
+                    value={memoDraft.title}
+                    onChange={(event) => setMemoDraft({ ...memoDraft, title: event.target.value })}
+                    placeholder="事项"
+                  />
+                  <input
+                    type="datetime-local"
+                    value={memoDraft.time}
+                    onChange={(event) => setMemoDraft({ ...memoDraft, time: event.target.value })}
+                  />
+                </div>
+                <textarea
+                  value={memoDraft.body}
+                  onChange={(event) => setMemoDraft({ ...memoDraft, body: event.target.value })}
+                  placeholder="补充内容"
+                />
+                <button className="text-button" type="submit">
+                  <Plus size={17} />
+                  新增
+                </button>
+              </form>
+            ) : null}
+            <div className="list">
+              {filtered.memos.length === 0 ? (
+                <Empty text="暂无备忘" />
+              ) : (
+                filtered.memos.map((memo) => (
+                  <article className={`memo-row ${memo.done ? "is-done" : ""}`} key={memo.id}>
                     <button
                       className="check-button"
-                      onClick={() => toggleAssignment(item)}
                       disabled={!canEdit}
-                      aria-label={complete || todayChecked ? "取消完成" : "标记完成"}
-                      title={complete || todayChecked ? "取消完成" : "标记完成"}
+                      onClick={() =>
+                        updateCollection("memos", (entry) =>
+                          entry.id === memo.id ? { ...entry, done: !entry.done } : entry,
+                        )
+                      }
+                      aria-label={memo.done ? "标记未完成" : "标记完成"}
+                      title={memo.done ? "标记未完成" : "标记完成"}
                     >
-                      {complete || todayChecked ? <Check size={16} /> : null}
+                      {memo.done ? <Check size={16} /> : null}
                     </button>
                     <div>
-                      <h2>{item.title}</h2>
-                      <p>
-                        {item.course || "未分类"} · {formatDate(item.due)}
-                      </p>
-                      <p>
-                        {assignmentTypes[item.type]}
-                        {item.type === "interval" ? ` · 每 ${item.intervalDays || 1} 天` : ""}
-                        {item.type === "long" ? ` · ${item.progress || 1}%` : ""}
-                      </p>
+                      <h2>{memo.title}</h2>
+                      {memo.body ? <p>{memo.body}</p> : null}
+                      <time>{memo.time ? memo.time.replace("T", " ") : "未设时间"}</time>
                     </div>
-                    {item.type === "long" ? (
-                      <input
-                        className="progress-input"
-                        type="number"
-                        min="1"
-                        max="100"
-                        disabled={!canEdit}
-                        value={item.progress || 1}
-                        onChange={(event) => updateProgress(item, event.target.value)}
-                        aria-label="长期任务完成百分比"
-                      />
-                    ) : (
-                      <span className={`pill ${item.priority}`}>{item.priority}</span>
-                    )}
                     {canEdit ? (
-                      <div className="row-actions">
-                        <button
-                          className="icon-button ghost"
-                          onClick={() => {
-                            setCommentAssignmentId(item.id);
-                            setCommentDraft("");
-                          }}
-                          aria-label="批注"
-                          title="批注"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          className="icon-button ghost"
-                          onClick={() => removeItem("assignments", item.id)}
-                          aria-label="删除作业"
-                          title="删除作业"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      <button
+                        className="icon-button ghost"
+                        onClick={() => removeItem("memos", memo.id)}
+                        aria-label="删除备忘"
+                        title="删除备忘"
+                      >
+                        <X size={16} />
+                      </button>
                     ) : null}
                   </article>
-                );
-              })
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          </section>
         </section>
-
-        <section className="panel">
-          <PanelTitle icon={CalendarDays} title="备忘录" />
-          {canEdit ? (
-            <form className="memo-form" onSubmit={addMemo}>
-              <div className="inline-fields">
-                <input
-                  value={memoDraft.title}
-                  onChange={(event) => setMemoDraft({ ...memoDraft, title: event.target.value })}
-                  placeholder="事项"
-                />
-                <input
-                  type="datetime-local"
-                  value={memoDraft.time}
-                  onChange={(event) => setMemoDraft({ ...memoDraft, time: event.target.value })}
-                />
-              </div>
-              <textarea
-                value={memoDraft.body}
-                onChange={(event) => setMemoDraft({ ...memoDraft, body: event.target.value })}
-                placeholder="补充内容"
-              />
-              <button className="text-button" type="submit">
-                <Plus size={17} />
-                新增
-              </button>
-            </form>
-          ) : null}
-          <div className="list">
-            {filtered.memos.length === 0 ? (
-              <Empty text="暂无备忘" />
-            ) : (
-              filtered.memos.map((memo) => (
-                <article className={`memo-row ${memo.done ? "is-done" : ""}`} key={memo.id}>
-                  <button
-                    className="check-button"
-                    disabled={!canEdit}
-                    onClick={() =>
-                      updateCollection("memos", (entry) =>
-                        entry.id === memo.id ? { ...entry, done: !entry.done } : entry,
-                      )
-                    }
-                    aria-label={memo.done ? "标记未完成" : "标记完成"}
-                    title={memo.done ? "标记未完成" : "标记完成"}
-                  >
-                    {memo.done ? <Check size={16} /> : null}
-                  </button>
-                  <div>
-                    <h2>{memo.title}</h2>
-                    {memo.body ? <p>{memo.body}</p> : null}
-                    <time>{memo.time ? memo.time.replace("T", " ") : "未设时间"}</time>
-                  </div>
-                  {canEdit ? (
-                    <button
-                      className="icon-button ghost"
-                      onClick={() => removeItem("memos", memo.id)}
-                      aria-label="删除备忘"
-                      title="删除备忘"
-                    >
-                      <X size={16} />
-                    </button>
-                  ) : null}
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-      </section>
       </main>
 
       <aside className="side-rail notes-rail">
@@ -848,27 +839,41 @@ function CalendarPanel({ assignments, cursor, setCursor }) {
 
   const markersByDate = useMemo(() => {
     const markers = new Map();
+    const weight = { normal: 1, long: 2, important: 3 };
     const addMarker = (dateKey, marker) => {
-      const next = markers.get(dateKey) || [];
-      if (next.length < 5) next.push(marker);
-      markers.set(dateKey, next);
+      const current = markers.get(dateKey);
+      if (!current || weight[marker.tone] >= weight[current.tone]) {
+        markers.set(dateKey, marker);
+      }
     };
 
     assignments.forEach((item) => {
-      const tone = getAssignmentTone(item);
-      if (item.type === "long") {
+      const important = getAssignmentTone(item) === "important";
+      if (item.type === "long" || item.type === "daily") {
         const start = item.createdAt ? new Date(item.createdAt) : monthStart;
         const end = parseDateKey(item.due) || new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
         const visibleStart = start > firstGridDate ? start : firstGridDate;
         const visibleEnd = end < addDays(firstGridDate, 41) ? end : addDays(firstGridDate, 41);
         for (let day = new Date(visibleStart); day <= visibleEnd; day = addDays(day, 1)) {
-          addMarker(dateKeyFromLocal(day), { type: "bar", tone, title: item.title });
+          addMarker(dateKeyFromLocal(day), { tone: important ? "important" : "long", title: item.title });
         }
         return;
       }
 
       if (item.due) {
-        addMarker(item.due, { type: "dot", tone, title: item.title });
+        addMarker(item.due, { tone: important ? "important" : "normal", title: item.title });
+      }
+
+      if (item.type === "interval") {
+        const intervalDays = Math.max(1, Number(item.intervalDays) || 1);
+        const start = item.createdAt ? new Date(item.createdAt) : firstGridDate;
+        const end = addDays(firstGridDate, 41);
+        for (let day = new Date(firstGridDate); day <= end; day = addDays(day, 1)) {
+          const elapsed = Math.max(0, Math.round((day - start) / 86400000));
+          if (day >= start && elapsed % intervalDays === 0) {
+            addMarker(dateKeyFromLocal(day), { tone: important ? "important" : "normal", title: item.title });
+          }
+        }
       }
     });
 
@@ -907,20 +912,17 @@ function CalendarPanel({ assignments, cursor, setCursor }) {
       <div className="calendar-grid">
         {days.map((day) => {
           const key = dateKeyFromLocal(day);
-          const markers = markersByDate.get(key) || [];
+          const marker = markersByDate.get(key);
           const outside = day.getMonth() !== cursor.getMonth();
           return (
-            <div className={`calendar-day ${outside ? "outside" : ""} ${key === todayKey ? "today" : ""}`} key={key}>
+            <div
+              className={`calendar-day ${marker ? `has-task ${marker.tone}` : ""} ${outside ? "outside" : ""} ${
+                key === todayKey ? "today" : ""
+              }`}
+              key={key}
+              title={marker?.title || ""}
+            >
               <span>{day.getDate()}</span>
-              <div className="calendar-markers">
-                {markers.map((marker, index) => (
-                  <i
-                    className={`calendar-marker ${marker.type} ${marker.tone}`}
-                    key={`${marker.title}-${index}`}
-                    title={marker.title}
-                  />
-                ))}
-              </div>
             </div>
           );
         })}
