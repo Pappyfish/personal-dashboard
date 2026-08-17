@@ -13,7 +13,9 @@ import {
   Lock,
   LogIn,
   LogOut,
+  MessageCircle,
   NotebookPen,
+  Pencil,
   Plus,
   Search,
   Settings,
@@ -49,6 +51,7 @@ function normalizeData(value) {
       intervalDays: 2,
       progress: 1,
       completedCycles: {},
+      comments: [],
       ...item,
     })),
     memos: value?.memos || [],
@@ -111,6 +114,31 @@ function isAssignmentComplete(item, timeZone) {
   return Boolean(item.completedCycles?.[getCycleKey(item, timeZone)]);
 }
 
+function parseDateKey(date) {
+  if (!date) return null;
+  const parsed = new Date(`${date}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function dateKeyFromLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getAssignmentTone(item) {
+  if (item.priority === "紧急") return "danger";
+  if (item.priority === "重要") return "important";
+  return "normal";
+}
+
 function App() {
   const [data, setData] = useState(initialData);
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
@@ -134,6 +162,12 @@ function App() {
   const [memoDraft, setMemoDraft] = useState({ title: "", time: "", body: "" });
   const [noteDraft, setNoteDraft] = useState("");
   const [query, setQuery] = useState("");
+  const [commentAssignmentId, setCommentAssignmentId] = useState("");
+  const [commentDraft, setCommentDraft] = useState("");
+  const [calendarCursor, setCalendarCursor] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   const canEdit = Boolean(token);
   const timeZone = data.settings.timezone;
@@ -295,6 +329,36 @@ function App() {
     saveState({ ...data, [collection]: data[collection].filter((item) => item.id !== id) });
   }
 
+  function addComment(event) {
+    event.preventDefault();
+    if (!canEdit || !commentAssignmentId || !commentDraft.trim()) return;
+    updateCollection("assignments", (entry) =>
+      entry.id === commentAssignmentId
+        ? {
+            ...entry,
+            comments: [
+              {
+                id: crypto.randomUUID(),
+                body: commentDraft.trim(),
+                createdAt: Date.now(),
+              },
+              ...(entry.comments || []),
+            ],
+          }
+        : entry,
+    );
+    setCommentDraft("");
+  }
+
+  function removeComment(assignmentId, commentId) {
+    if (!canEdit) return;
+    updateCollection("assignments", (entry) =>
+      entry.id === assignmentId
+        ? { ...entry, comments: (entry.comments || []).filter((comment) => comment.id !== commentId) }
+        : entry,
+    );
+  }
+
   function toggleAssignment(item) {
     updateCollection("assignments", (entry) => {
       if (entry.id !== item.id) return entry;
@@ -355,8 +419,20 @@ function App() {
     return { total, done, pending, urgent, rate: total ? Math.round((done / total) * 100) : 0 };
   }, [data.assignments, timeZone]);
 
+  const activeAssignment = data.assignments.find((item) => item.id === commentAssignmentId);
+
   return (
-    <main className="app-shell">
+    <div className="page-frame">
+      <aside className="side-rail calendar-rail">
+        <CalendarPanel
+          assignments={data.assignments}
+          cursor={calendarCursor}
+          setCursor={setCalendarCursor}
+          timeZone={timeZone}
+        />
+      </aside>
+
+      <main className="app-shell">
       <section className="topbar">
         <div>
           <p className="eyebrow">Personal Dashboard</p>
@@ -522,6 +598,9 @@ function App() {
                     className={`assignment-row ${complete && item.type === "once" ? "is-done" : ""}`}
                     key={item.id}
                   >
+                    {(item.comments || []).length ? (
+                      <span className="comment-badge">{Math.min(99, (item.comments || []).length)}</span>
+                    ) : null}
                     <button
                       className="check-button"
                       onClick={() => toggleAssignment(item)}
@@ -557,14 +636,27 @@ function App() {
                       <span className={`pill ${item.priority}`}>{item.priority}</span>
                     )}
                     {canEdit ? (
-                      <button
-                        className="icon-button ghost"
-                        onClick={() => removeItem("assignments", item.id)}
-                        aria-label="删除作业"
-                        title="删除作业"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="row-actions">
+                        <button
+                          className="icon-button ghost"
+                          onClick={() => {
+                            setCommentAssignmentId(item.id);
+                            setCommentDraft("");
+                          }}
+                          aria-label="批注"
+                          title="批注"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          className="icon-button ghost"
+                          onClick={() => removeItem("assignments", item.id)}
+                          aria-label="删除作业"
+                          title="删除作业"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     ) : null}
                   </article>
                 );
@@ -640,6 +732,10 @@ function App() {
           </div>
         </section>
 
+      </section>
+      </main>
+
+      <aside className="side-rail notes-rail">
         <section className="panel notes-panel">
           <PanelTitle icon={StickyNote} title="便签" />
           {canEdit ? (
@@ -676,8 +772,160 @@ function App() {
             )}
           </div>
         </section>
-      </section>
-    </main>
+      </aside>
+
+      {activeAssignment ? (
+        <section className="comment-overlay" aria-label="任务批注">
+          <div className="comment-page">
+            <div className="comment-header">
+              <div>
+                <p>任务批注</p>
+                <h2>{activeAssignment.title}</h2>
+              </div>
+              <button
+                className="icon-button ghost"
+                onClick={() => {
+                  setCommentAssignmentId("");
+                  setCommentDraft("");
+                }}
+                aria-label="关闭批注"
+                title="关闭批注"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <form className="comment-form" onSubmit={addComment}>
+              <textarea
+                value={commentDraft}
+                onChange={(event) => setCommentDraft(event.target.value)}
+                placeholder="写一条批注"
+                disabled={!canEdit}
+                autoFocus
+              />
+              <button className="text-button" type="submit" disabled={!canEdit || !commentDraft.trim()}>
+                <Plus size={17} />
+                新批注
+              </button>
+            </form>
+            <div className="comment-list">
+              {(activeAssignment.comments || []).length === 0 ? (
+                <Empty text="暂无批注" />
+              ) : (
+                activeAssignment.comments.map((comment, index) => (
+                  <article className="comment-card" key={comment.id}>
+                    <span>{index + 1}</span>
+                    <div>
+                      <p>{comment.body}</p>
+                      <time>{new Date(comment.createdAt).toLocaleString("zh-CN")}</time>
+                    </div>
+                    {canEdit ? (
+                      <button
+                        className="icon-button ghost"
+                        onClick={() => removeComment(activeAssignment.id, comment.id)}
+                        aria-label="删除批注"
+                        title="删除批注"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    ) : null}
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function CalendarPanel({ assignments, cursor, setCursor }) {
+  const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const firstGridDate = addDays(monthStart, -monthStart.getDay());
+  const todayKey = dateKeyFromLocal(new Date());
+  const days = Array.from({ length: 42 }, (_, index) => addDays(firstGridDate, index));
+  const monthLabel = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long" }).format(monthStart);
+
+  const markersByDate = useMemo(() => {
+    const markers = new Map();
+    const addMarker = (dateKey, marker) => {
+      const next = markers.get(dateKey) || [];
+      if (next.length < 5) next.push(marker);
+      markers.set(dateKey, next);
+    };
+
+    assignments.forEach((item) => {
+      const tone = getAssignmentTone(item);
+      if (item.type === "long") {
+        const start = item.createdAt ? new Date(item.createdAt) : monthStart;
+        const end = parseDateKey(item.due) || new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+        const visibleStart = start > firstGridDate ? start : firstGridDate;
+        const visibleEnd = end < addDays(firstGridDate, 41) ? end : addDays(firstGridDate, 41);
+        for (let day = new Date(visibleStart); day <= visibleEnd; day = addDays(day, 1)) {
+          addMarker(dateKeyFromLocal(day), { type: "bar", tone, title: item.title });
+        }
+        return;
+      }
+
+      if (item.due) {
+        addMarker(item.due, { type: "dot", tone, title: item.title });
+      }
+    });
+
+    return markers;
+  }, [assignments, cursor]);
+
+  return (
+    <section className="panel calendar-panel">
+      <div className="calendar-header">
+        <PanelTitle icon={CalendarDays} title="日历" />
+        <div>
+          <button
+            className="icon-button ghost"
+            onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+            title="上个月"
+            aria-label="上个月"
+          >
+            ‹
+          </button>
+          <button
+            className="icon-button ghost"
+            onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+            title="下个月"
+            aria-label="下个月"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+      <strong className="calendar-month">{monthLabel}</strong>
+      <div className="calendar-weekdays" aria-hidden="true">
+        {["日", "一", "二", "三", "四", "五", "六"].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="calendar-grid">
+        {days.map((day) => {
+          const key = dateKeyFromLocal(day);
+          const markers = markersByDate.get(key) || [];
+          const outside = day.getMonth() !== cursor.getMonth();
+          return (
+            <div className={`calendar-day ${outside ? "outside" : ""} ${key === todayKey ? "today" : ""}`} key={key}>
+              <span>{day.getDate()}</span>
+              <div className="calendar-markers">
+                {markers.map((marker, index) => (
+                  <i
+                    className={`calendar-marker ${marker.type} ${marker.tone}`}
+                    key={`${marker.title}-${index}`}
+                    title={marker.title}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

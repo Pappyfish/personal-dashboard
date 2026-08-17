@@ -28,10 +28,18 @@ button {
   cursor: pointer;
 }
 
-.app-shell {
-  width: min(1180px, calc(100vw - 32px));
+.page-frame {
+  width: min(1760px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 28px 0 42px;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.74fr) minmax(760px, 1180px) minmax(260px, 0.74fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.app-shell {
+  min-width: 0;
 }
 
 .topbar {
@@ -291,8 +299,7 @@ h1 {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
   grid-template-areas:
-    "assignments memo"
-    "assignments notes";
+    "assignments memo";
   gap: 14px;
 }
 
@@ -307,8 +314,16 @@ h1 {
   grid-area: assignments;
 }
 
-.notes-panel {
-  grid-area: notes;
+.side-rail {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  position: sticky;
+  top: 18px;
+}
+
+.notes-rail .notes-panel {
+  min-height: 560px;
 }
 
 .panel:not(.assignments):not(.notes-panel) {
@@ -329,6 +344,114 @@ h1 {
 
 .panel-title svg {
   color: #59786a;
+}
+
+.calendar-panel {
+  min-height: 360px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.calendar-header .panel-title {
+  margin-bottom: 0;
+}
+
+.calendar-header div {
+  display: flex;
+  gap: 2px;
+}
+
+.calendar-header .icon-button {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+  font-size: 1.35rem;
+}
+
+.calendar-month {
+  display: block;
+  margin: 12px 0 10px;
+  font-size: 1rem;
+  color: #28362e;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calendar-weekdays {
+  margin-bottom: 5px;
+  color: #6b7167;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.calendar-day {
+  min-height: 42px;
+  padding: 5px 4px;
+  border: 1px solid #e3e0d6;
+  border-radius: 8px;
+  background: #faf8f1;
+}
+
+.calendar-day > span {
+  display: block;
+  color: #30342d;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.calendar-day.outside {
+  opacity: 0.45;
+}
+
+.calendar-day.today {
+  border-color: #7f9b85;
+  background: #e7ede5;
+}
+
+.calendar-markers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  min-height: 8px;
+}
+
+.calendar-marker {
+  display: block;
+  flex: 0 0 auto;
+  background: #58786a;
+}
+
+.calendar-marker.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.calendar-marker.bar {
+  width: 18px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.calendar-marker.important {
+  background: #b77b3d;
+}
+
+.calendar-marker.danger {
+  background: #a44a3f;
 }
 
 .compact-form {
@@ -428,8 +551,9 @@ textarea {
 
 .assignment-row,
 .memo-row {
+  position: relative;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto 38px;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   min-height: 66px;
@@ -441,6 +565,37 @@ textarea {
 
 .memo-row {
   grid-template-columns: 30px minmax(0, 1fr) 38px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.row-actions .icon-button {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+}
+
+.comment-badge {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #b93535;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 2px #fffdf8;
 }
 
 .check-button {
@@ -513,7 +668,7 @@ textarea {
 
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 
@@ -571,7 +726,125 @@ textarea {
   background: #faf8f1;
 }
 
+.comment-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 7vh 18px 24px;
+  background: rgba(35, 37, 34, 0.22);
+}
+
+.comment-page {
+  width: min(680px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #d9d7cc;
+  border-radius: 8px;
+  background: #fffdf8;
+  box-shadow: 0 18px 60px rgba(35, 37, 34, 0.18);
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.comment-header p,
+.comment-header h2 {
+  margin: 0;
+}
+
+.comment-header p {
+  color: #6d746a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.comment-header h2 {
+  margin-top: 4px;
+  font-size: 1.18rem;
+}
+
+.comment-form {
+  display: grid;
+  gap: 8px;
+}
+
+.comment-form textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 10px 12px;
+  border: 1px solid #d8d5ca;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #252720;
+  outline: none;
+}
+
+.comment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.comment-card {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 34px;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #e2dfd4;
+  border-radius: 8px;
+  background: #faf8f1;
+}
+
+.comment-card > span {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #b93535;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.comment-card p,
+.comment-card time {
+  margin: 0;
+}
+
+.comment-card p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.comment-card time {
+  display: block;
+  margin-top: 4px;
+  color: #72766c;
+  font-size: 0.78rem;
+}
+
 @media (max-width: 900px) {
+  .page-frame {
+    width: min(100vw - 24px, 1180px);
+    grid-template-columns: 1fr;
+  }
+
+  .side-rail {
+    position: static;
+  }
+
   .topbar {
     align-items: stretch;
     flex-direction: column;
@@ -589,8 +862,7 @@ textarea {
     grid-template-columns: 1fr;
     grid-template-areas:
       "assignments"
-      "memo"
-      "notes";
+      "memo";
   }
 
   .compact-form,
@@ -629,7 +901,7 @@ textarea {
 }
 
 @media (max-width: 560px) {
-  .app-shell {
+  .page-frame {
     width: min(100vw - 20px, 1180px);
     padding-top: 18px;
   }
@@ -670,12 +942,26 @@ textarea {
     justify-self: start;
   }
 
-  .assignment-row .ghost {
+  .assignment-row .row-actions {
     grid-column: 3;
     grid-row: 1;
+    flex-direction: column;
   }
 
   h1 {
     font-size: 2.1rem;
+  }
+
+  .calendar-day {
+    min-height: 38px;
+    padding: 4px 3px;
+  }
+
+  .calendar-marker.bar {
+    width: 14px;
+  }
+
+  .comment-overlay {
+    padding: 12px;
   }
 }
