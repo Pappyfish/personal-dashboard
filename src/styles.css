@@ -384,7 +384,8 @@ h1 {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px 6px;
+  row-gap: 12px;
+  column-gap: 6px;
 }
 
 .calendar-weekdays {
@@ -396,17 +397,17 @@ h1 {
 }
 
 .calendar-day {
-  min-height: 48px;
-  aspect-ratio: 1;
+  min-height: 42px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 999px;
   background: transparent;
 }
 
 .calendar-day > span {
+  position: relative;
+  z-index: 2;
   display: block;
   color: #30342d;
   font-size: 0.9rem;
@@ -418,22 +419,56 @@ h1 {
 }
 
 .calendar-day.today {
-  border-color: #2d3a31;
+  outline: 1px solid #2d3a31;
+  outline-offset: -4px;
+  border-radius: 999px;
 }
 
-.calendar-day.has-task.normal {
+.calendar-marker {
+  position: absolute;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.calendar-day.has-task.normal .calendar-marker {
   background: #c8f3e4;
 }
 
-.calendar-day.has-task.long {
-  aspect-ratio: auto;
-  min-width: 100%;
-  border-radius: 999px;
+.calendar-day.has-task.long .calendar-marker {
   background: #bddbf7;
 }
 
-.calendar-day.has-task.important {
+.calendar-day.has-task.important .calendar-marker {
   background: #f4b6c1;
+}
+
+.calendar-day.range .calendar-marker {
+  width: calc(100% - 8px);
+  height: 30px;
+}
+
+.calendar-day.range.connect-left .calendar-marker {
+  left: -3px;
+  width: calc(100% + 3px);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.calendar-day.range.connect-right .calendar-marker {
+  right: -3px;
+  width: calc(100% + 3px);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.calendar-day.range.connect-left.connect-right .calendar-marker {
+  left: -3px;
+  right: -3px;
+  width: auto;
+  border-radius: 0;
 }
 
 .compact-form {

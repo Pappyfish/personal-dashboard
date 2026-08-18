@@ -855,13 +855,17 @@ function CalendarPanel({ assignments, cursor, setCursor }) {
         const visibleStart = start > firstGridDate ? start : firstGridDate;
         const visibleEnd = end < addDays(firstGridDate, 41) ? end : addDays(firstGridDate, 41);
         for (let day = new Date(visibleStart); day <= visibleEnd; day = addDays(day, 1)) {
-          addMarker(dateKeyFromLocal(day), { tone: important ? "important" : "long", title: item.title });
+          addMarker(dateKeyFromLocal(day), {
+            tone: important ? "important" : "long",
+            shape: "range",
+            title: item.title,
+          });
         }
         return;
       }
 
       if (item.due) {
-        addMarker(item.due, { tone: important ? "important" : "normal", title: item.title });
+        addMarker(item.due, { tone: important ? "important" : "normal", shape: "dot", title: item.title });
       }
 
       if (item.type === "interval") {
@@ -871,7 +875,11 @@ function CalendarPanel({ assignments, cursor, setCursor }) {
         for (let day = new Date(firstGridDate); day <= end; day = addDays(day, 1)) {
           const elapsed = Math.max(0, Math.round((day - start) / 86400000));
           if (day >= start && elapsed % intervalDays === 0) {
-            addMarker(dateKeyFromLocal(day), { tone: important ? "important" : "normal", title: item.title });
+            addMarker(dateKeyFromLocal(day), {
+              tone: important ? "important" : "normal",
+              shape: "dot",
+              title: item.title,
+            });
           }
         }
       }
@@ -914,14 +922,22 @@ function CalendarPanel({ assignments, cursor, setCursor }) {
           const key = dateKeyFromLocal(day);
           const marker = markersByDate.get(key);
           const outside = day.getMonth() !== cursor.getMonth();
+          const isRange = marker?.shape === "range";
+          const previousMarker = markersByDate.get(dateKeyFromLocal(addDays(day, -1)));
+          const nextMarker = markersByDate.get(dateKeyFromLocal(addDays(day, 1)));
+          const connectsLeft =
+            isRange && day.getDay() !== 0 && previousMarker?.shape === "range" && previousMarker.tone === marker.tone;
+          const connectsRight =
+            isRange && day.getDay() !== 6 && nextMarker?.shape === "range" && nextMarker.tone === marker.tone;
           return (
             <div
-              className={`calendar-day ${marker ? `has-task ${marker.tone}` : ""} ${outside ? "outside" : ""} ${
-                key === todayKey ? "today" : ""
-              }`}
+              className={`calendar-day ${marker ? `has-task ${marker.tone} ${marker.shape}` : ""} ${
+                connectsLeft ? "connect-left" : ""
+              } ${connectsRight ? "connect-right" : ""} ${outside ? "outside" : ""} ${key === todayKey ? "today" : ""}`}
               key={key}
               title={marker?.title || ""}
             >
+              {marker ? <i className="calendar-marker" aria-hidden="true" /> : null}
               <span>{day.getDate()}</span>
             </div>
           );
